@@ -1,0 +1,95 @@
+.nav li button {
+  position: relative;
+  display: block;
+  margin: 10px 15px; }
+
+a:hover {
+  text-decoration: none; }
+
+a:active {
+  text-decoration: none; }
+
+#notification {
+  position: fixed;
+  background: rgba(255, 235, 59, 0.5);
+  color: #795548;
+  padding: 10px;
+  bottom: 10px;
+  left: 0; }
+
+#formBoard {
+  display: none; }
+
+.boardList {
+  height: 100px;
+  padding: 10px;
+  height: 80px;
+  background: #5bc0de;
+  color: #fff;
+  font-size: 18px;
+  text-align: center;
+  border-radius: 3px; }
+  .boardList p {
+    font-size: 12px; }
+
+.createBoard {
+  background: #eee;
+  color: #9E9E9E;
+  cursor: pointer;
+  text-align: center;
+  height: 80px;
+  border-radius: 3px;
+  padding-top: 30px; }
+
+.createBoard:hover, .createList:hover {
+  background: #ccc; }
+
+.boardList:hover {
+  background: #00BCD4; }
+
+.margin-bottom {
+  margin-bottom: 20px; }
+
+.createList {
+  background: #eee;
+  color: #9E9E9E;
+  cursor: pointer;
+  padding-left: 18px;
+  height: 40px;
+  border-radius: 3px;
+  padding-top: 11px; }
+
+#formAddList {
+  width: 100%;
+  padding: 5px;
+  background: #eee;
+  display: none;
+  border-radius: 3px; }
+
+.panel-heading {
+  cursor: pointer; }
+
+.createCard {
+  color: #9E9E9E;
+  cursor: pointer;
+  height: 40px;
+  text-align: center;
+  padding-top: 10px;
+  border-radius: 5px; }
+
+.createCard:hover {
+  background: #eee; }
+
+.hiden-edit-text {
+  background: #eee;
+  border: none;
+  color: #333; }
+
+.list {
+  min-height: 150px; }
+
+.highlight {
+  background: #eee;
+  border: 1px #ccc dotted;
+  min-height: 150px;
+  border-radius: 5px; }
