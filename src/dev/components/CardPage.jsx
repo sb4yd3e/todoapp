@@ -162,35 +162,21 @@ var CommentList = React.createClass({
   }
 },
 render() {
-  var currentPost = function(date){
-    var seconds = Math.floor((new Date() - date) / 1000);
+      var timeConverter = function(date){
+        var today = new Date(date);
+        var dd = today.getDate();
+        var mm = today.getMonth()+1;
 
-    var interval = Math.floor(seconds / 31536000);
-    if(Math.floor(seconds) < 60){
-      return Math.floor(seconds) + " วินาทีที่แล้ว";
-    }
-    if (interval > 1) {
-      return interval + " ปีที่แล้ว";
-    }
-    interval = Math.floor(seconds / 2592000);
-    if (interval > 1) {
-      return interval + " เดือนที่แล้ว";
-    }
-    interval = Math.floor(seconds / 86400);
-    if (interval > 1) {
-      return interval + " วันที่แล้ว";
-    }
-    interval = Math.floor(seconds / 3600);
-    if (interval > 1) {
-      return interval + " ชั่วโมงที่แล้ว";
-    }
-    interval = Math.floor(seconds / 60);
-    if (interval > 0) {
-      return interval + " นาทีที่แล้ว";
-    }
-    
-
-  };
+        var yyyy = today.getFullYear();
+        if(dd<10){
+          dd='0'+dd
+        } 
+        if(mm<10){
+          mm='0'+mm
+        } 
+        var today = dd+'/'+mm+'/'+yyyy;
+        return today;
+      };
   return (
     <div id="comments">
     {
@@ -201,7 +187,7 @@ render() {
         }
         return(
           <div className="thumbnail" key={index}>
-          <strong>{value.user}</strong> - {currentPost(value.at_create)}
+          <strong>{value.user}</strong> - {timeConverter(value.at_create)}
           <br/>
           • {value.message}<br/>
           {buttondelete}
