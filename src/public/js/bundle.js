@@ -48256,9 +48256,9 @@ exports.default = {
   port: 5000,
   processName: 'TodoApp',
   rootURL: 'http://localhost',
-  neo4jURL: '10.187.25.203:7474',
+  neo4jURL: '192.168.99.100:32769',
   neo4jUSER: 'neo4j',
-  neo4jPASS: 'orisma',
+  neo4jPASS: '1234',
   secret: 'adrubale'
 };
 
@@ -48397,7 +48397,7 @@ var App = function (_Component) {
 
 exports.default = App;
 
-},{"./Navbar":405,"react":362}],401:[function(require,module,exports){
+},{"./Navbar":406,"react":362}],401:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -48413,6 +48413,10 @@ var _react2 = _interopRequireDefault(_react);
 var _reactRedux = require('react-redux');
 
 var _reactRouter = require('react-router');
+
+var _CardPage = require('./CardPage.jsx');
+
+var _CardPage2 = _interopRequireDefault(_CardPage);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -48441,7 +48445,9 @@ var BoardPage = function (_Component) {
       user_email: _this.props.session.user.email,
       board_id: _this.props.params.bordId,
       showNotification: true,
-      notificationText: "กำลังดาวน์โหลด..."
+      notificationText: "กำลังดาวน์โหลด...",
+      showcardpage: false,
+      card_id: ''
     };
 
     return _this;
@@ -48531,6 +48537,16 @@ var BoardPage = function (_Component) {
       });
     }
   }, {
+    key: 'showCard',
+    value: function showCard(data) {
+      this.setState({ showcardpage: data.showCard, card_id: data.idCard });
+    }
+  }, {
+    key: 'hideCard',
+    value: function hideCard(data) {
+      this.setState({ showcardpage: false, card_id: '' });
+    }
+  }, {
     key: 'render',
     value: function render() {
 
@@ -48581,8 +48597,9 @@ var BoardPage = function (_Component) {
                 )
               ),
               _react2.default.createElement('hr', null),
-              _react2.default.createElement(ListItem, { itemlist: this.state.lists, board_id: this.state.board_id, userid: this.state.user_id, onAddFormList: this.addList.bind(this) }),
-              _react2.default.createElement('div', { className: 'clearfix' })
+              _react2.default.createElement(ListItem, { itemlist: this.state.lists, board_id: this.state.board_id, userid: this.state.user_id, onAddFormList: this.addList.bind(this), showHideCard: this.showCard.bind(this) }),
+              _react2.default.createElement('div', { className: 'clearfix' }),
+              this.state.showcardpage ? _react2.default.createElement(_CardPage2.default, { cardId: this.state.card_id, hideCard: this.hideCard.bind(this) }) : null
             )
           )
         )
@@ -48599,16 +48616,29 @@ BoardPage.contextTypes = {
 
 var ListItem = _react2.default.createClass({
   displayName: 'ListItem',
+  getInitialState: function getInitialState() {
+    return { cardNewName: '', currentLid: '', cards: [], unGroupCard: [] };
+  },
 
   componentDidMount: function componentDidMount() {
+    var _this5 = this;
+
     $('#listSort').sortable({
       items: 'div.list',
       placeholder: "highlight col-sm-4 margin-bottom",
       update: this.handleSortableUpdate
     });
+    //get all cards from board.
+    socket.emit('list:card', { uid: this.props.userid, bid: this.props.board_id }, function (result) {
+      if (result) {
+        // console.log(result);
+        var items = _.groupBy(result, 'list_id');
+        _this5.setState({ cards: items, unGroupCard: result });
+      }
+    });
   },
   handleSortableUpdate: function handleSortableUpdate() {
-    var _this5 = this;
+    var _this6 = this;
 
     var newItems = this.props.itemlist;
     var $node = $('#listSort');
@@ -48629,20 +48659,107 @@ var ListItem = _react2.default.createClass({
       if (!result) {
         return alert("เกิดข้อผิดพลาดไม่สามารถบันทึกข้อมูลได้.");
       } else {
-        _this5.setState({ items: newItems });
+        _this6.setState({ items: newItems });
       }
     });
+  },
+  sortingCard: function sortingCard(data) {
+    var cardNewItems = _.indexBy(this.state.unGroupCard, 'data.id');
+    var item_ids = data.data;
+    var ungroup_sort = [];
+    item_ids.map(function (listId, index) {
+      listId.map(function (val, inx) {
+        ungroup_sort.push({ list_id: index, data: { id: val, position: inx } });
+      });
+    });
+    ungroup_sort.map(function (v, i) {
+      cardNewItems[v.data.id].list_id = v.list_id;
+      cardNewItems[v.data.id].data.position = v.data.position;
+      ungroup_sort[i].data.title = cardNewItems[v.data.id].data.title;
+      ungroup_sort[i].data.description = cardNewItems[v.data.id].data.description;
+    });
+    var newGroupCard = _.groupBy(cardNewItems, 'list_id');
+    this.setState({ cards: newGroupCard, unGroupCard: ungroup_sort });
   },
   submitList: function submitList(data) {
     this.props.onAddFormList({ name: data.name });
   },
+  onCardName: function onCardName(e) {
+    this.setState({ cardNewName: e.target.value });
+  },
+  clickAddCard: function clickAddCard(lid) {
+    this.setState({ currentLid: lid });
+  },
+  addCard: function addCard(e) {
+    var _this7 = this;
+
+    e.preventDefault();
+    var title = this.state.cardNewName;
+    if (!title) {
+      return alert("กรุณาใส่ชื่อการ์ด");
+    }
+    var at_create = new Date().getTime();
+    var position = 0;
+    if (this.state.cards[this.state.currentLid]) {
+      position = this.state.cards[this.state.currentLid].length + 1;
+    };
+    socket.emit('add:card', {
+      title: title,
+      bid: this.props.board_id,
+      uid: this.props.userid,
+      lid: this.state.currentLid,
+      sort: position,
+      at_create: at_create
+    }, function (result) {
+      if (!result) {
+        return alert("เกิดข้อผิดพลาดกรุณาลองใหม่อีกครั้ง.");
+      } else {
+        var cards = _this7.state.cards;
+
+        if (!cards[_this7.state.currentLid]) {
+          cards[_this7.state.currentLid] = [];
+        }
+        cards[_this7.state.currentLid].push({
+          list_id: _this7.state.currentLid,
+          data: {
+            id: result,
+            title: title,
+            description: "",
+            position: position
+          }
+        });
+        _this7.setState({ cards: cards });
+
+        //update data un group
+        var unGroupCard = _this7.state.unGroupCard;
+
+        unGroupCard.push({
+          list_id: _this7.state.currentLid,
+          data: {
+            id: result,
+            title: title,
+            description: "",
+            position: position
+          } });
+        _this7.setState({ unGroupCard: unGroupCard });
+      }
+      _this7.setState({ cardNewName: '', currentLid: '' });
+      $('.formAddCard').hide();
+      $('.createCard').show();
+    });
+  },
+  showHideCard: function showHideCard(data) {
+    this.props.showHideCard({ showCard: data.showCard, idCard: data.idCard });
+  },
   render: function render() {
+    var _this8 = this;
+
     var items = _.sortBy(this.props.itemlist, 'position');
-    // console.log(items);
     return _react2.default.createElement(
       'div',
       { id: 'listSort' },
       items.map(function (item, i) {
+        var clickCreateCard = _this8.clickAddCard.bind(_this8, item.id);
         return _react2.default.createElement(
           'div',
           { className: 'col-sm-4 margin-bottom list', key: item.id, 'data-id': item.id },
@@ -48655,7 +48772,9 @@ var ListItem = _react2.default.createClass({
               _react2.default.createElement(
                 'strong',
                 { className: 'titleList' },
-                item.title
+                item.title,
+                ' : ',
+                item.id
               ),
               _react2.default.createElement(
                 'div',
@@ -48668,15 +48787,6 @@ var ListItem = _react2.default.createClass({
                 _react2.default.createElement(
                   'ul',
                   { className: 'dropdown-menu' },
-                  _react2.default.createElement(
-                    'li',
-                    null,
-                    _react2.default.createElement(
-                      'a',
-                      { href: '#' },
-                      'เพิ่มการ์ด'
-                    )
-                  ),
                   _react2.default.createElement(
                     'li',
                     null,
@@ -48700,11 +48810,40 @@ var ListItem = _react2.default.createClass({
             ),
             _react2.default.createElement(
               'div',
-              { className: 'panel-body' },
+              { className: 'panel-body sort-card', 'data-list-id': item.id },
+              _react2.default.createElement(ListCards, { cards: _this8.state.cards[item.id], onSortCard: _this8.sortingCard, list_id: item.id, showHideCard: _this8.showHideCard })
+            ),
+            _react2.default.createElement(
+              'div',
+              { className: 'createCard', onClick: clickCreateCard },
+              'เพิ่มการ์ดใหม่'
+            ),
+            _react2.default.createElement(
+              'div',
+              { className: 'formAddCard' },
               _react2.default.createElement(
-                'div',
-                { className: 'createCard' },
-                'เพิ่มการ์ดใหม่'
+                'form',
+                { onSubmit: _this8.addCard },
+                _react2.default.createElement(
+                  'div',
+                  { className: 'form-group' },
+                  _react2.default.createElement('input', { type: 'text', className: 'form-control', placeholder: 'ใส่ข้อมูล', value: _this8.state.cardNewName, onChange: _this8.onCardName, required: true })
+                ),
+                _react2.default.createElement(
+                  'div',
+                  { className: 'form-group' },
+                  _react2.default.createElement(
+                    'button',
+                    { type: 'submit', className: 'btn btn-success' },
+                    'เพิ่ม'
+                  ),
+                  ' ',
+                  _react2.default.createElement(
+                    'button',
+                    { type: 'button', className: 'btn btn-default pull-right' },
+                    'ยกเลิก'
+                  )
+                )
               )
             )
           )
@@ -48775,6 +48914,58 @@ var FormNewList = _react2.default.createClass({
     );
   }
 });
+
+var ListCards = _react2.default.createClass({
+  displayName: 'ListCards',
+
+  componentDidMount: function componentDidMount() {
+    $('.sort-card').sortable({
+      items: 'div.card',
+      placeholder: "card-placeholder",
+      connectWith: ".sort-card",
+      update: this.handleSortableUpdate
+    }).disableSelection();
+  },
+  handleSortableUpdate: function handleSortableUpdate(event, ui) {
+    var newItems = this.props.cards;
+    var $node = $('.sort-card');
+    var ids = new Array();
+    $node.each(function () {
+      if (!ids[$(this).attr('data-list-id')]) {
+        ids[$(this).attr('data-list-id')] = [];
+      }
+      ids[$(this).attr('data-list-id')] = ids[$(this).attr('data-list-id')].concat($(this).sortable('toArray', { attribute: 'data-id' }));
+    });
+    $node.sortable('cancel');
+    this.props.onSortCard({ data: ids });
+  },
+  showCard: function showCard(id) {
+    this.props.showHideCard({ showCard: true, idCard: id });
+  },
+  render: function render() {
+    var _this9 = this;
+
+    var items = _.sortBy(this.props.cards, 'data.position');
+    // console.log(items);
+    return _react2.default.createElement(
+      'div',
+      null,
+      items.map(function (item, i) {
+        var clickShowCard = _this9.showCard.bind(_this9, item.data.id);
+        return _react2.default.createElement(
+          'div',
+          { className: 'card', onClick: clickShowCard, 'data-id': item.data.id, key: i },
+          item.data.title,
+          ' : ',
+          item.data.id,
+          ' : ',
+          item.data.position
+        );
+      })
+    );
+  }
+});
+
 var Notify = _react2.default.createClass({
   displayName: 'Notify',
 
@@ -48809,7 +49000,7 @@ function mapStateToProps(state) {
 
 exports.default = (0, _reactRedux.connect)(mapStateToProps)(BoardPage);
 
-},{"react":362,"react-redux":192,"react-router":226}],402:[function(require,module,exports){
+},{"./CardPage.jsx":403,"react":362,"react-redux":192,"react-router":226}],402:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -49111,6 +49302,439 @@ function mapStateToProps(state) {
 exports.default = (0, _reactRedux.connect)(mapStateToProps)(BoardUser);
 
 },{"react":362,"react-redux":192,"react-router":226}],403:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _reactRedux = require('react-redux');
+
+var _reactRouter = require('react-router');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var socket = io.connect();
+
+var CardPage = function (_Component) {
+  _inherits(CardPage, _Component);
+
+  function CardPage(props) {
+    _classCallCheck(this, CardPage);
+
+    var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(CardPage).call(this, props));
+
+    _this.state = {
+      cardData: [],
+      newTitle: '',
+      newDesc: ''
+    };
+
+    return _this;
+  }
+
+  _createClass(CardPage, [{
+    key: 'componentDidMount',
+    value: function componentDidMount() {
+      var _this2 = this;
+
+      socket.emit('get:card', {
+        cid: this.props.cardId
+      }, function (result) {
+        if (!result) {
+          return alert("เกิดข้อผิดพลาดกรุณาลองใหม่อีกครั้ง.");
+        } else {
+          _this2.setState({ cardData: result, newTitle: result.title, newDesc: result.detail });
+        }
+      });
+    }
+  }, {
+    key: 'hideCard',
+    value: function hideCard() {
+      this.props.hideCard({ false: false });
+    }
+  }, {
+    key: 'onChangeTitle',
+    value: function onChangeTitle(e) {
+      this.setState({ newTitle: e.target.value });
+    }
+  }, {
+    key: 'onCancelTitle',
+    value: function onCancelTitle() {
+      this.setState({ newTitle: this.state.cardData.title });
+    }
+  }, {
+    key: 'changeTitle',
+    value: function changeTitle(e) {
+      var _this3 = this;
+
+      e.preventDefault();
+      socket.emit('save:card', {
+        cid: this.props.cardId,
+        data: { title: this.state.newTitle },
+        cmd: 'title'
+      }, function (result) {
+        if (!result) {
+          return alert("เกิดข้อผิดพลาดกรุณาลองใหม่อีกครั้ง.");
+        } else {
+          var cardData = _this3.state.cardData;
+
+          cardData.title = _this3.state.newTitle;
+          _this3.setState({ cardData: cardData });
+        }
+      });
+    }
+  }, {
+    key: 'onChangeDesc',
+    value: function onChangeDesc(e) {
+      this.setState({ newDesc: e.target.value });
+    }
+  }, {
+    key: 'onCancelDesc',
+    value: function onCancelDesc() {
+      this.setState({ newDesc: this.state.cardData.detail });
+    }
+  }, {
+    key: 'changeDesc',
+    value: function changeDesc(e) {
+      var _this4 = this;
+
+      e.preventDefault();
+      socket.emit('save:card', {
+        cid: this.props.cardId,
+        data: { detail: this.state.newDesc },
+        cmd: 'desc'
+      }, function (result) {
+        if (!result) {
+          return alert("เกิดข้อผิดพลาดกรุณาลองใหม่อีกครั้ง.");
+        } else {
+          var cardData = _this4.state.cardData;
+
+          cardData.detail = _this4.state.newDesc;
+          _this4.setState({ cardData: cardData });
+        }
+      });
+    }
+  }, {
+    key: 'render',
+    value: function render() {
+      var onClickClose = this.hideCard.bind(this);
+      var onClickCancelTitle = this.onCancelTitle.bind(this);
+      var onClickCancelDesc = this.onCancelDesc.bind(this);
+      return _react2.default.createElement(
+        'div',
+        { id: 'cardpage' },
+        _react2.default.createElement(
+          'div',
+          { className: 'container' },
+          _react2.default.createElement(
+            'div',
+            { className: 'col-sm-8' },
+            _react2.default.createElement(
+              'h3',
+              null,
+              this.state.cardData.title
+            ),
+            _react2.default.createElement(
+              'form',
+              { onSubmit: this.changeTitle.bind(this) },
+              _react2.default.createElement(
+                'div',
+                { className: 'form-group' },
+                _react2.default.createElement('input', { type: 'text', className: 'form-control', value: this.state.newTitle, onChange: this.onChangeTitle.bind(this), required: true })
+              ),
+              _react2.default.createElement(
+                'button',
+                { type: 'submit', className: 'btn btn-success' },
+                'บันทึก'
+              ),
+              _react2.default.createElement(
+                'button',
+                { className: 'btn', onClick: onClickCancelTitle },
+                'ยกเลิก'
+              )
+            ),
+            _react2.default.createElement('hr', null),
+            _react2.default.createElement(
+              'div',
+              null,
+              this.state.cardData.detail
+            ),
+            _react2.default.createElement(
+              'form',
+              { onSubmit: this.changeDesc.bind(this) },
+              _react2.default.createElement(
+                'div',
+                { className: 'form-group' },
+                _react2.default.createElement('textarea', { className: 'form-control', value: this.state.newDesc, onChange: this.onChangeDesc.bind(this) })
+              ),
+              _react2.default.createElement(
+                'button',
+                { type: 'submit', className: 'btn btn-success' },
+                'บันทึก'
+              ),
+              _react2.default.createElement(
+                'button',
+                { type: 'button', className: 'btn', onClick: onClickCancelDesc },
+                'ยกเลิก'
+              )
+            ),
+            _react2.default.createElement('hr', null),
+            _react2.default.createElement(
+              'div',
+              null,
+              'Label'
+            ),
+            _react2.default.createElement('hr', null),
+            _react2.default.createElement(
+              'div',
+              null,
+              'member'
+            ),
+            _react2.default.createElement('hr', null),
+            _react2.default.createElement(CommentList, { cid: this.props.cardId, uid: this.props.session.user.id })
+          ),
+          _react2.default.createElement(
+            'div',
+            { className: 'col-sm-4' },
+            _react2.default.createElement(
+              'button',
+              { type: 'button', className: 'btn btn-danger btn-block' },
+              'ลบการ์ด'
+            ),
+            _react2.default.createElement(
+              'button',
+              { type: 'button', className: 'btn btn-primary btn-block' },
+              'ปฏิทิน'
+            ),
+            _react2.default.createElement(
+              'button',
+              { type: 'button', className: 'btn btn-success btn-block' },
+              'เพิ่มสมาชิก'
+            ),
+            _react2.default.createElement('hr', null),
+            _react2.default.createElement(
+              'strong',
+              null,
+              'ลาเบล'
+            ),
+            _react2.default.createElement(
+              'ul',
+              null,
+              _react2.default.createElement(
+                'li',
+                null,
+                'Color 01'
+              ),
+              _react2.default.createElement(
+                'li',
+                null,
+                'Color 02'
+              ),
+              _react2.default.createElement(
+                'li',
+                null,
+                'Color 03'
+              )
+            )
+          ),
+          _react2.default.createElement('div', { className: 'clearfix' }),
+          _react2.default.createElement('hr', null),
+          _react2.default.createElement(
+            'button',
+            { type: 'button', className: 'btn btn-primary pull-right', onClick: onClickClose },
+            'ปิด'
+          ),
+          _react2.default.createElement('div', { className: 'clearfix' })
+        )
+      );
+    }
+  }]);
+
+  return CardPage;
+}(_react.Component);
+
+CardPage.contextTypes = {
+  router: _react.PropTypes.object
+};
+
+
+var CommentList = _react2.default.createClass({
+  displayName: 'CommentList',
+  getInitialState: function getInitialState() {
+    return { comments: [] };
+  },
+
+  componentDidMount: function componentDidMount() {
+    var _this5 = this;
+
+    socket.emit('list:comment', { cid: this.props.cid }, function (result) {
+      if (result) {
+        _this5.setState({ comments: result });
+      }
+    });
+  },
+  changeComment: function changeComment(data) {
+    var _this6 = this;
+
+    switch (data.cmd) {
+      case 'add':
+        var comments = this.state.comments;
+
+        comments.push(data.content);
+        this.setState({ comments: comments });
+        break;
+      case 'delete':
+        socket.emit('delete:comment', { uid: this.props.uid, cid: data.id }, function (result) {
+          if (result) {
+            var comments = _this6.state.comments;
+
+            var index = getIndexOf(comments, 'comment_id', data.id);
+            comments.splice(index, 1);
+            _this6.setState({ comments: comments });
+          }
+        });
+        break;
+    }
+  },
+  render: function render() {
+    var _this7 = this;
+
+    var currentPost = function currentPost(date) {
+      var seconds = Math.floor((new Date() - date) / 1000);
+
+      var interval = Math.floor(seconds / 31536000);
+      if (Math.floor(seconds) < 60) {
+        return Math.floor(seconds) + " วินาทีที่แล้ว";
+      }
+      if (interval > 1) {
+        return interval + " ปีที่แล้ว";
+      }
+      interval = Math.floor(seconds / 2592000);
+      if (interval > 1) {
+        return interval + " เดือนที่แล้ว";
+      }
+      interval = Math.floor(seconds / 86400);
+      if (interval > 1) {
+        return interval + " วันที่แล้ว";
+      }
+      interval = Math.floor(seconds / 3600);
+      if (interval > 1) {
+        return interval + " ชั่วโมงที่แล้ว";
+      }
+      interval = Math.floor(seconds / 60);
+      if (interval > 0) {
+        return interval + " นาทีที่แล้ว";
+      }
+    };
+    return _react2.default.createElement(
+      'div',
+      { id: 'comments' },
+      this.state.comments.map(function (value, index) {
+        var cliCKdelete = _this7.changeComment.bind(_this7, { cmd: "delete", id: value.comment_id });
+        if (value.uid === _this7.props.uid) {
+          var buttondelete = _react2.default.createElement(
+            'button',
+            { className: 'btn btn-danger btn-xs pull-right', onClick: cliCKdelete },
+            'ลบคอมเม้น'
+          );
+        }
+        return _react2.default.createElement(
+          'div',
+          { className: 'thumbnail', key: index },
+          _react2.default.createElement(
+            'strong',
+            null,
+            value.user
+          ),
+          ' - ',
+          currentPost(value.at_create),
+          _react2.default.createElement('br', null),
+          '• ',
+          value.message,
+          _react2.default.createElement('br', null),
+          buttondelete,
+          _react2.default.createElement('div', { className: 'clearfix' })
+        );
+      }),
+      _react2.default.createElement(CommentForm, { uid: this.props.uid, cid: this.props.cid, onEditComment: this.changeComment })
+    );
+  }
+});
+
+var CommentForm = _react2.default.createClass({
+  displayName: 'CommentForm',
+  getInitialState: function getInitialState() {
+    return { comment: '' };
+  },
+
+  onChangeComment: function onChangeComment(e) {
+    this.setState({ comment: e.target.value });
+  },
+  PostComment: function PostComment(e) {
+    var _this8 = this;
+
+    e.preventDefault();
+    var comment = this.state.comment;
+    if (!comment) {
+      return;
+    }
+    var at_create = new Date().getTime();
+    socket.emit('add:comment', {
+      cid: this.props.cid,
+      uid: this.props.uid,
+      data: comment,
+      at_create: at_create
+    }, function (result) {
+      if (!result) {
+        return alert("เกิดข้อผิดพลาดกรุณาลองใหม่อีกครั้ง.");
+      } else {
+        _this8.props.onEditComment({ cmd: 'add', content: { comment_id: result['ID(c)'], user: result['u.firstName'], message: comment, at_create: at_create } });
+      }
+    });
+    this.setState({ comment: '' });
+  },
+  render: function render() {
+    return _react2.default.createElement(
+      'div',
+      null,
+      _react2.default.createElement(
+        'form',
+        { onSubmit: this.PostComment },
+        _react2.default.createElement(
+          'div',
+          { className: 'form-group' },
+          _react2.default.createElement('textarea', { className: 'form-control', placeholder: 'กรุณาใส่คอมเม้นที่นี่...', onChange: this.onChangeComment, value: this.state.comment, required: true })
+        ),
+        _react2.default.createElement(
+          'button',
+          { type: 'submit', className: 'btn btn-success' },
+          'ส่ง'
+        )
+      )
+    );
+  }
+});
+
+function mapStateToProps(state) {
+  return { session: state.session };
+}
+
+exports.default = (0, _reactRedux.connect)(mapStateToProps)(CardPage);
+
+},{"react":362,"react-redux":192,"react-router":226}],404:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -49160,7 +49784,7 @@ var Homepage = function (_React$Component) {
 
 exports.default = Homepage;
 
-},{"react":362}],404:[function(require,module,exports){
+},{"react":362}],405:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -49350,7 +49974,7 @@ function mapStateToProps(state) {
 
 exports.default = (0, _reactRedux.connect)(mapStateToProps, { loginUsers: _actions.loginUsers })(Login);
 
-},{"../actions":399,"react":362,"react-dom":189,"react-redux":192}],405:[function(require,module,exports){
+},{"../actions":399,"react":362,"react-dom":189,"react-redux":192}],406:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -49537,7 +50161,7 @@ function mapStateToProps(state) {
 
 exports.default = (0, _reactRedux.connect)(mapStateToProps, { deleteSessions: _actions.deleteSessions })(Navbar);
 
-},{"../actions":399,"react":362,"react-redux":192,"react-router":226}],406:[function(require,module,exports){
+},{"../actions":399,"react":362,"react-redux":192,"react-router":226}],407:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -49660,7 +50284,7 @@ function mapStateToProps(state) {
 
 exports.default = (0, _reactRedux.connect)(mapStateToProps)(ProfileUser);
 
-},{"react":362,"react-redux":192}],407:[function(require,module,exports){
+},{"react":362,"react-redux":192}],408:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -49883,7 +50507,7 @@ function mapStateToProps(state) {
 
 exports.default = (0, _reactRedux.connect)(mapStateToProps, { createUsers: _actions.createUsers })(Signup);
 
-},{"../actions":399,"react":362,"react-redux":192}],408:[function(require,module,exports){
+},{"../actions":399,"react":362,"react-redux":192}],409:[function(require,module,exports){
 'use strict';
 
 var _react = require('react');
@@ -49936,7 +50560,7 @@ _reactDom2.default.render(_react2.default.createElement(
   _react2.default.createElement(_reactRouter.Router, { history: _reactRouter.browserHistory, routes: _routes2.default })
 ), document.querySelector('#myApp'));
 
-},{"../config":398,"./actions":399,"./reducers":409,"./routes":411,"jwt-simple":161,"react":362,"react-dom":189,"react-redux":192,"react-router":226,"redux":379,"redux-promise":373}],409:[function(require,module,exports){
+},{"../config":398,"./actions":399,"./reducers":410,"./routes":412,"jwt-simple":161,"react":362,"react-dom":189,"react-redux":192,"react-router":226,"redux":379,"redux-promise":373}],410:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -49957,7 +50581,7 @@ var rootReducer = (0, _redux.combineReducers)({
 
 exports.default = rootReducer;
 
-},{"./reducer_sessions":410,"redux":379}],410:[function(require,module,exports){
+},{"./reducer_sessions":411,"redux":379}],411:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -49999,7 +50623,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var INITIAL_STATE = { user: false, error: false };
 
-},{"../../config":398,"../actions":399,"jwt-simple":161}],411:[function(require,module,exports){
+},{"../../config":398,"../actions":399,"jwt-simple":161}],412:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -50062,7 +50686,7 @@ exports.default = _react2.default.createElement(
   _react2.default.createElement(_reactRouter.Route, { path: 'board/:bordId', onEnter: _checkLogin2.default, component: _BoardPage2.default })
 );
 
-},{"../helpers/checkLogin":412,"./components/App":400,"./components/BoardPage":401,"./components/BoardUser":402,"./components/Homepage":403,"./components/Login":404,"./components/ProfileUser":406,"./components/Signup":407,"axios":15,"react":362,"react-router":226}],412:[function(require,module,exports){
+},{"../helpers/checkLogin":413,"./components/App":400,"./components/BoardPage":401,"./components/BoardUser":402,"./components/Homepage":404,"./components/Login":405,"./components/ProfileUser":407,"./components/Signup":408,"axios":15,"react":362,"react-router":226}],413:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -50114,7 +50738,7 @@ exports.default = function (nextState, replace, callback) {
   });
 };
 
-},{"../config":398,"../dev/actions":399,"../dev/reducers":409,"./defineError":413,"jwt-simple":161,"redux":379,"redux-promise":373}],413:[function(require,module,exports){
+},{"../config":398,"../dev/actions":399,"../dev/reducers":410,"./defineError":414,"jwt-simple":161,"redux":379,"redux-promise":373}],414:[function(require,module,exports){
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -50130,4 +50754,4 @@ function defineError(name, defaultMessage) {
   return customError;
 }
 
-},{}]},{},[408]);
+},{}]},{},[409]);
