@@ -24,7 +24,21 @@ module.exports = function (socket) {
 			}
 		});
 	});
+	socket.on('list:join_boards',function(data,rs){
 
+		db.cypher({
+			query:'MATCH (u:User {id:"'+data.id+'"})-[j:JOIN]->(b:Board)  RETURN ID(b),b',
+		},function(err,results){
+			if (err) console.log(err);
+			if(results){
+				boardList = [];
+				results.forEach(function(item,index){
+					boardList.push({id:item['ID(b)'],title:item['b']['properties']['title']});
+				});
+				rs(boardList);
+			}
+		});
+	});
 	socket.on('get:board',function(data,rs){
 		db.cypher({
 			query:'MATCH (p:Project) WHERE ID(p) = '+data.id+'  RETURN p LIMIT 1',
@@ -137,19 +151,30 @@ module.exports = function (socket) {
 	socket.on('get:card',function(data,rs){
 
 		db.cypher({
-			query:'MATCH (c:Card) WHERE ID(c) = '+data.cid+'  RETURN c LIMIT 1',
+			query:'MATCH (c:Card) WHERE ID(c) = '+data.cid+' OPTIONAL MATCH (u:User)-[j:JOIN]->(c) RETURN c,u',
 		},function(err,results){
 			if (err) console.log(err);
 			if(results[0]){
-				rs(results[0]['c']['properties']);
+				var data;
+				var mem = [];
+				var fullmem = [];
+				results.forEach(function(v,i){
+					data = v['c']['properties'];
+					if(v['u']){
+						mem.push(v['u']['properties']['id']);
+						fullmem.push({id:v['u']['properties']['id'],fullName:v['u']['properties']['fullName'],avatar:v['u']['properties']['avatar'],email:v['u']['properties']['email']});
+					}
+				});
+				rs({data:data,joinMember:mem,joinMemberFull:fullmem});
 			}else{
 				rs(false);
 			}
 		});
 	});
 	socket.on('delete:card',function(data,rs){
+		console.log(data);
 		db.cypher({
-			query:'MATCH (u:User)<-[p:CREATE_BY]-(c:Card)-[i:LIVE_IN]->(l:List),(c)<-[ic:LIVE_IN]-(cm:Comment)-[pc:CREATE_BY]->(u) WHERE u.id="'+data.uid+'" AND id(c) = '+data.cid+' DELETE p,i,ic,pc,cm,c',
+			query:'MATCH (u:User)<-[p:CREATE_BY]-(c:Card)-[i:LIVE_IN]->(l:List) WHERE u.id="'+data.uid+'" AND id(c) = '+data.cid+' OPTIONAL MATCH (c)<-[ic:LIVE_IN]-(cm:Comment)-[pc:CREATE_BY]->(u)  DELETE p,i,ic,pc,cm,c',
 		},function(err,results){
 			if (err) console.log(err);
 			rs(true);
@@ -164,13 +189,28 @@ module.exports = function (socket) {
 			case 'desc':
 			query += ' SET c.detail = "'+data.data.detail+'" RETURN ID(c)';
 			break;
+			case 'date':
+			query += ' SET c.start_date = "'+data.data.start+'", c.end_date = "'+data.data.end+'" RETURN ID(c)';
+			break;
+			case 'member':
+			if(data.data.typeAction=='add'){
+				query += ' MATCH (u:User {id:"'+data.data.uid+'"}) CREATE (u)-[j:JOIN]->(c) RETURN u';
+			}else{
+				query += ' MATCH (u:User {id:"'+data.data.uid+'"})-[j:JOIN]->(c) DELETE j RETURN ID(u)';
+			}
+			break;
 		}
 		db.cypher({
 			query:query,
 		},function(err,results){
 			if (err) console.log(err);
 			if(results[0]){
-				rs(true);
+				if(data.cmd==='member' && data.data.typeAction=='add'){
+					rs({id:results[0]['u']['properties']['id'],fullName:results[0]['u']['properties']['fullName'],avatar:results[0]['u']['properties']['avatar'],email:results[0]['u']['properties']['email']});
+				}else{
+					rs(true);
+				}
+				
 			}else{
 				rs(false);
 			}
@@ -211,6 +251,20 @@ module.exports = function (socket) {
 				});
 			}
 			rs(res);
+		});
+	});
+	socket.on('list:members',function(data,rs){
+		db.cypher({
+			query:'MATCH (u:User) RETURN u',
+		},function(err,results){
+			if (err) console.log(err);
+			if(results){
+				var userList = [];
+				results.forEach(function(item,index){
+					userList.push({id:item['u']['properties']['id'],avatar:item['u']['properties']['avatar'],fullName:item['u']['properties']['fullName'],email:item['u']['properties']['email']});
+				});
+				rs(userList);
+			}
 		});
 	});
 	socket.on('disconnect', function () {

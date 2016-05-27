@@ -50,6 +50,15 @@
     "redux": "^3.3.1",
     "redux-promise": "^0.5.3",
     "shortid": "^2.2.4",
-    "watchify": "^3.7.0"
+    "watchify": "^3.7.0",
+    "underscore":"^1.8.3",
+    "timekeeper": "0.0.5",
+    "calendar": "^0.1.0",
+    "moment": "^2.10.6",
+    "moment-range": "^2.0.3",
+    "calendar": "^0.1.0",
+    "classnames": "^2.1.1",
+    "immutable": "^3.7.2",
+    "react-addons-pure-render-mixin": "^0.14.0"
   }
 }

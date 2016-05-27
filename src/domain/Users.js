@@ -28,6 +28,7 @@ generateFullName.description = 'generated fullName';
 const Schema = {
   create: {
     id: Joi.string().required(),
+    avatar: Joi.string().default(''),
     firstName: Joi.string().required(),
     lastName: Joi.string().required(),
     fullName: Joi.string().default(generateFullName),
@@ -86,6 +87,7 @@ const Users = {
 
       let userData = pick(validation.value, [
         'id',
+        'avatar',
         'firstName',
         'lastName',
         'fullName',

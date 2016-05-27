@@ -1,7 +1,7 @@
 import React, { Component, PropTypes} from 'react';
 import { connect } from 'react-redux';
 import { Link } from 'react-router';
-import CardPage from './CardPage.jsx';
+import CardPage from './CardPage';
 const socket = io.connect();
 class BoardPage extends Component {
   static contextTypes = {

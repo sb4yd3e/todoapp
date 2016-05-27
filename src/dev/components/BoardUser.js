@@ -10,6 +10,7 @@ class BoardUser extends Component {
     super(props);
     this.state = {
       boards: [],
+      join_boards: [],
       user_id:this.props.session.user.id,
       user_name:this.props.session.user.firstName,
       user_email:this.props.session.user.email,
@@ -19,6 +20,13 @@ class BoardUser extends Component {
     socket.emit('list:boards', { id:this.props.session.user.id}, (result) => {
       if(result){
         this.setState({boards:result,showNotification:false});
+      }else{
+        this.setState({showNotification:false});
+      }
+    });
+    socket.emit('list:join_boards', { id:this.props.session.user.id}, (result) => {
+      if(result){
+        this.setState({join_boards:result,showNotification:false});
       }else{
         this.setState({showNotification:false});
       }
@@ -58,8 +66,9 @@ class BoardUser extends Component {
       <hr/>
       <BoardList boardList={this.state.boards} />
       <div className="clearfix"></div>
-
-
+      <h4><i className="glyphicon glyphicon-share"></i> บอร์ดที่ร่วมงาน</h4>
+      <hr/>
+      <JoinBoardList boardList={this.state.join_boards} />
       </div>
       </div>
       </div>
@@ -111,6 +120,43 @@ class BoardUser extends Component {
       <div className="col-sm-4 margin-bottom">
       <div className="createBoard" data-toggle="modal" data-target="#addForm">สร้างบอร์ดใหม่</div>
       </div>
+      </div>
+      );
+    }
+  });
+  var JoinBoardList = React.createClass({
+    render:function(){
+      var timeConverter = function(date){
+        var today = new Date(date);
+        var dd = today.getDate();
+        var mm = today.getMonth()+1;
+
+        var yyyy = today.getFullYear();
+        if(dd<10){
+          dd='0'+dd
+        } 
+        if(mm<10){
+          mm='0'+mm
+        } 
+        var today = dd+'/'+mm+'/'+yyyy;
+        return today;
+      };
+     
+      return(
+      <div>
+      {
+        this.props.boardList.map((item, i) => {
+          return (
+          <div className="col-sm-4 margin-bottom" key={i}>
+          <Link to={`/board/${item.id}`}>
+          <div className="boardList">
+          <strong>{item.title}</strong>
+          </div>
+          </Link>
+          </div>
+          );
+        })
+      } 
       </div>
       );
     }
