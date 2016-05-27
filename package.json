@@ -1,6 +1,11 @@
 {
   "name": "TodoApp",
   "version": "1.0.0",
+   "private": true,
+  "repository": {
+	  "type": "git",
+	  "url": "git://github.com/sb4yd3e/todoapp.git"
+	},
   "description": "express react redux neo4j",
   "main": "index.js",
   "scripts": {
