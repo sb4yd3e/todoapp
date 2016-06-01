@@ -1,6 +1,6 @@
 import React, { Component, PropTypes} from 'react'
 import { connect } from 'react-redux'
-import UserAvatar from './UserAvatar';
+import UserAvatar from './UserAvatar'
 const socket = io.connect();
 class ProfileUser extends Component {
  static contextTypes = {
@@ -24,11 +24,11 @@ class ProfileUser extends Component {
         <p><strong>Created: </strong>{this.timestampToDate()}</p>
         </div>
         <div className="col-sm-8">
-        <form>
-        <div className="form-group">
-        <label>{this.props.session.user.avatar?<img src={this.props.session.user.avatar} className="thumbnail avatar"/>:<img src="https://placeholdit.imgix.net/~text?txtsize=33&txt=Avatar&w=100&h=100" className="thumbnail avatar"/>}</label>
         
+        <div className="form-group">
+        <UserAvatar />
         </div>
+        <form>
         <div className="form-group">
         <label>ชื่อ</label>
         <input type="text" className="form-control" required/>

@@ -70,6 +70,22 @@ export default function (router) {
   })
 
   /*
+  * POST
+  * User upload avatar
+  */
+  router.post('/users/avatar', function (req, res) {
+    Users.login(req.body)
+    .then((data) => {
+
+      console.log(data);
+
+    })
+    .catch((error) => {
+      res.send({error})
+    })
+  })
+
+  /*
   * GET
   * Find User by ID
   */

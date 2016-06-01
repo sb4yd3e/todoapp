@@ -505,3 +505,21 @@ a:active{
 .avatar{
 	max-width: 100px;
 }
+.event{
+	height: 22px;
+	text-overflow: ellipsis;
+	overflow: hidden;
+	background: #40E0D0;
+	cursor: pointer;
+}
+.event:hover{
+background: #038272;
+}
+.event-handle{
+	cursor: move;
+}
+.resizer:after{
+	content: ' ||';
+	color: #fff;
+	cursor: col-resize;
+}

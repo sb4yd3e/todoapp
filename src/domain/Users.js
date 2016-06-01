@@ -171,6 +171,10 @@ const Users = {
     })
   },
 
+  upload(user){
+    
+  }
+
 }
 
 export default Users

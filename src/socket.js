@@ -6,13 +6,29 @@ module.exports = function (socket) {
 	var boardList = [];
 	var lists = [];
 	var cards = [];
+
+	function timeConverter(date){
+		var today = new Date(parseInt(date));
+		var dd = today.getDate();
+		var mm = today.getMonth()+1;
+
+		var yyyy = today.getFullYear();
+		if(dd<10){
+			dd='0'+dd
+		} 
+		if(mm<10){
+			mm='0'+mm
+		} 
+		var today = yyyy+'-'+mm+'-'+dd;
+		return today;
+	};
 	socket.emit('init', {
 		welcome:'Hello world.'
 	});
 	socket.on('list:boards',function(data,rs){
 
 		db.cypher({
-			query:'MATCH (b:Board)-[r:CREATE_BY]->(u:User {id:"'+data.id+'"})  RETURN ID(b),b',
+			query:'MATCH (b:Board)-[r:CREATE_BY]->(u:User)  RETURN ID(b),b',
 		},function(err,results){
 			if (err) console.log(err);
 			if(results){
@@ -85,7 +101,7 @@ module.exports = function (socket) {
 	});
 	socket.on('list:lists',function(data,rs){
 		db.cypher({
-			query:'MATCH (b:Board)-[c:CREATE_BY]->(u:User {id:"'+data.uid+'"}) WHERE ID(b) = '+data.boardId+'  OPTIONAL MATCH (l:List)-[r:LIVE_IN]->(b) RETURN b.title,ID(l),l ORDER BY l.position',
+			query:'MATCH (b:Board)-[c:CREATE_BY]->(u:User) WHERE ID(b) = '+data.boardId+' OPTIONAL MATCH (l:List)-[r:LIVE_IN]->(b) RETURN b.title,ID(l),l ORDER BY l.position',
 		},function(err,results){
 			if (err) console.log(err);
 			if(results){
@@ -137,7 +153,9 @@ module.exports = function (socket) {
 							id:value['c']['_id'],
 							title:value['c']['properties']['title'],
 							description:value['c']['properties']['description'],
-							position:value['c']['properties']['position']
+							position:value['c']['properties']['position'],
+							start_date:value['c']['properties']['start_date'],
+							end_date:value['c']['properties']['end_date']
 						}
 					};
 
@@ -191,6 +209,9 @@ module.exports = function (socket) {
 			break;
 			case 'date':
 			query += ' SET c.start_date = "'+data.data.start+'", c.end_date = "'+data.data.end+'" RETURN ID(c)';
+			break;
+			case 'drop':
+			query += ' MATCH (u:User)<-[cr:CREATE_BY]-(c)  MATCH (u2:User) WHERE u2.firstName = "'+data.data.user+'" DELETE cr CREATE (c)-[c3:CREATE_BY {at_create:"'+new Date().getTime()+'"}]->(u2) SET c.start_date = "'+data.data.start+'", c.end_date = "'+data.data.end+'" RETURN ID(c)';
 			break;
 			case 'member':
 			if(data.data.typeAction=='add'){
@@ -261,10 +282,33 @@ module.exports = function (socket) {
 			if(results){
 				var userList = [];
 				results.forEach(function(item,index){
-					userList.push({id:item['u']['properties']['id'],avatar:item['u']['properties']['avatar'],fullName:item['u']['properties']['fullName'],email:item['u']['properties']['email']});
+					userList.push({id:item['u']['properties']['id'],avatar:item['u']['properties']['avatar'],fullName:item['u']['properties']['fullName'],email:item['u']['properties']['email'],firstName:item['u']['properties']['firstName']});
 				});
 				rs(userList);
 			}
+		});
+	});
+	socket.on('list:events',function(data,rs){
+		db.cypher({
+			query:'MATCH (u2:User)<-[uc:CREATE_BY]-(c:Card)-[n:LIVE_IN]->(l:List)-[n2:LIVE_IN]->(b:Board) WHERE ID(b) = '+data.bid+' RETURN c,u2.firstName',
+		},function(err,results){
+			if (err) console.log(err);
+			var cardList = [];
+			results.forEach(function(item,index){
+				if(item['c']){
+					var timeDiff = Math.abs(item['c']['properties']['end_date'] - item['c']['properties']['start_date']);
+					var diffDays = Math.ceil(timeDiff / (1000 * 3600 * 24)) + 1;
+					
+					cardList.push({
+						id:item['c']['_id'].toString(),
+						title:item['c']['properties']['title'],
+						duration:diffDays,
+						startDate:timeConverter(item['c']['properties']['start_date']),
+						resource:item['u2.firstName']
+					});
+				}
+			});
+			rs({events:cardList});
 		});
 	});
 	socket.on('disconnect', function () {

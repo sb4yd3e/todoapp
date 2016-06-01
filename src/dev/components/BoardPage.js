@@ -2,6 +2,7 @@ import React, { Component, PropTypes} from 'react';
 import { connect } from 'react-redux';
 import { Link } from 'react-router';
 import CardPage from './CardPage';
+import Gantt from './Gantt';
 const socket = io.connect();
 class BoardPage extends Component {
   static contextTypes = {
@@ -20,6 +21,7 @@ class BoardPage extends Component {
       showNotification:true,
       notificationText:"กำลังดาวน์โหลด...",
       showcardpage:false,
+      showgantt:false,
       card_id:''
     };
 
@@ -34,7 +36,7 @@ class BoardPage extends Component {
       document.title = 'Error!!';
     }
   });
-
+   this.setState({showgantt:true});
  }
  onEditฺBoard(e){
   e.preventDefault();
@@ -94,6 +96,7 @@ showCard(data){
 }
 hideCard(data){
   this.setState({showcardpage:false,card_id:''});
+
 }
 render(){
 
@@ -116,6 +119,8 @@ render(){
     </div>
     </form>
     </h4>
+    <hr/>
+    {this.state.showgantt?<Gantt boardId={this.state.board_id} showCard={this.showCard.bind(this)} />:null}
     <hr/>
     <ListItem itemlist={this.state.lists} board_id={this.state.board_id} userid={this.state.user_id} onAddFormList={this.addList.bind(this)}  showHideCard={this.showCard.bind(this)} />
     <div className="clearfix"></div>
@@ -182,6 +187,8 @@ sortingCard:function(data){
     cardNewItems[v.data.id].data.position = v.data.position;
     ungroup_sort[i].data.title = cardNewItems[v.data.id].data.title;
     ungroup_sort[i].data.description = cardNewItems[v.data.id].data.description;
+    ungroup_sort[i].data.start_date = cardNewItems[v.data.id].data.start_date;
+    ungroup_sort[i].data.end_start = cardNewItems[v.data.id].data.end_start;
   });
   var newGroupCard = _.groupBy(cardNewItems,'list_id');
   this.setState({cards:newGroupCard,unGroupCard:ungroup_sort});

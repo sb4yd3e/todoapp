@@ -37,6 +37,19 @@ export function loginUsers (user) {
 }
 
 /*
+* POST
+* Upload avatar
+*/
+export function avatarUsers (user) {
+  const request = axios.post(`${ROOT_URL}/user/avatar`, user)
+  return {
+    type: SESSION,
+    payload: request
+  }
+
+}
+
+/*
 * GET
 * Check Sessions
 */

@@ -213,7 +213,7 @@ render(){
     <h4 className="modal-title" id="myModalLabel">Calendar</h4>
     </div>
     <div className="modal-body">
-    {this.state.showCalendar?<DatePicker start={this.state.cardData.data.start_date} end={this.state.cardData.data.end_date} onChangeDate={this.onChangeDate.bind(this)} />:null}
+    {this.state.showCalendar?<DatePicker start={parseInt(this.state.cardData.data.start_date)} end={parseInt(this.state.cardData.data.end_date)} onChangeDate={this.onChangeDate.bind(this)} />:null}
     </div>
     </div>
     </div>
